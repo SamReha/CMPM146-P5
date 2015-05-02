@@ -1,5 +1,8 @@
+import sys
 import json
 from collections import namedtuple
+
+import planner as Plan
 
 # Prototypes for make_checker and make_effector. These will be used in the process of 
 # converting the recipes into a more efficient format.
@@ -21,11 +24,20 @@ def make_effector(rule):
     
     return effect
 
-with open('Crafting.json') as f:
-	Crafting = json.load(f)
+# Try to open up the passed-in file, handle errors nicely.
+try:
+    with open(sys.argv[1]) as f:
+        Crafting = json.load(f)
+except IndexError:
+    print "Usage Error: p5.py [crafting_file]"
+    exit()
+except IOError:
+    print "Usage Error: " + sys.argv[1] + " could not be found."
+    exit()
     
 items, inventory, goal = Crafting['Items'], Crafting['Initial'], Crafting['Goal']
 
+# Convert recipes into more efficient format
 Recipe = namedtuple('Recipe',['name','check','effect','cost'])
 all_recipes = []
 for name, rule in Crafting['Recipes'].items():
@@ -33,14 +45,11 @@ for name, rule in Crafting['Recipes'].items():
     effector = make_effector(rule)
     recipe = Recipe(name, checker, effector, rule['Time'])
     all_recipes.append(recipe)
-    
-# Test json reading by printing some crap out to the console.
-# List of items that can be in your inventory:
-print "Item Set: " + str(items)
 
-# List of items in your initial inventory with amounts:
-print "Inventory: " + str(inventory)
+plan = Plan.get_plan(items, inventory, goal, all_recipes)
 
-# List of items needed to be in your inventory at the end of the plan:
-# (okay to have more than this; some might be satisfied by initial inventory)
-print "Goal: " + str(goal)
+# Display plan
+if plan is None:
+    print "No plan could be found!"
+else:
+    print plan
