@@ -87,9 +87,10 @@ def search(graph, back_graph, initial, goal, limit, heuristic):
             forward_u = prev[forward_u]
         plan.reverse()
         
+        backward_u = back_prev.get(backward_u, None)
         while backward_u:
             print "AAAAAAAHHHHHH"
-            plan.append(verbose[backward_u])    # This does repeat u.
+            plan.append(verbose[backward_u])
             backward_u = back_prev.get(backward_u, None)
         
         return total_cost, plan
