@@ -11,28 +11,28 @@ def graph(state, goal):
             yield (r.name, r.effect(state), r.cost)
             
 def not_redundant(cur_state, end_state, rec):
-    if rec.name is "craft wooden_pickaxe at bench":
+    if rec.name == "craft wooden_pickaxe at bench":
         if cur_state[16] >= end_state[16]:
             return False
-    elif rec.name is "craft stone_pickaxe at bench":
+    elif rec.name == "craft stone_pickaxe at bench":
         if cur_state[13] >= end_state[13]:
             return False
-    elif rec.name is "craft iron_pickaxe at bench":
+    elif rec.name == "craft iron_pickaxe at bench":
         if cur_state[7] >= end_state[7]:
             return False
-    elif rec.name is "craft wooden_axe at bench":
+    elif rec.name == "craft wooden_axe at bench":
         if cur_state[15] >= end_state[15]:
             return False
-    elif rec.name is "craft stone_axe at bench":
+    elif rec.name == "craft stone_axe at bench":
         if cur_state[12] >= end_state[12]:
             return False
-    elif rec.name is "craft iron_pickaxe at bench":
+    elif rec.name == "craft iron_pickaxe at bench":
         if cur_state[14] >= end_state[14]:
             return False
-    elif rec.name is "craft furnace at bench":
+    elif rec.name == "craft furnace at bench":
         if cur_state[4] >= end_state[4]:
             return False
-    elif rec.name is "craft bench":
+    elif rec.name == "craft bench":
         if cur_state[0] >= end_state[0]:
             return False
     else:
@@ -74,102 +74,53 @@ def get_item_dictionary(item_set):
 # Prototypes for make_checker and make_effector. These will be used in the process of 
 # converting the recipes into a more efficient format.
 def make_checker(rule):
-    # this code runs once
-    # do something with rule['Consumes'] and rule['Requires']
-    try:
-        requirements = rule['Requires'].copy()
-    except KeyError:
-        requirements = dict()
-    
-    try:
-        consumes = rule['Consumes'].copy()
-    except KeyError:
-        consumes = dict()
-    
-    for key in requirements:
-        requirements[key] = 1
-        
-    consumes.update(requirements)
+    consumes, requires = rule.get('Consumes', {}), rule.get('Requires', {})
+    consumption_pairs = [(itemDict[item],consumes[item]) for item in consumes]
+    requirement_pairs = [(itemDict[item],1) for item in requires]
+    both_pairs = consumption_pairs + requirement_pairs
+
     def check(state):
-        # this code runs millions of times
-        for item in consumes:
-            indexOfItem = itemDict[item]
-            if consumes[item] > state[indexOfItem]:
-                return False
-        
-        return True # or False
-    
+        return all([state[i] >= v for i,v in both_pairs])
+
     return check
-
+    
 def make_effector(rule):
-    # this code runs once
-    # do something with rule['Produces'] and rule['Consumes']
-    toAdd = {}
-    toRemove = {}
+    produces, consumes = rule.get('Produces', {}), rule.get('Requires', {})
+    willProduce = [(itemDict[item], produces[item]) for item in produces]
+    willConsume = [(itemDict[item], consumes[item]*(-1)) for item in consumes]
+    delta_pairs = willProduce + willConsume
     
-    for item in rule['Produces']:
-        toAdd[item] = rule['Produces'][item]
-            
-    try:
-        for item in rule['Consumes']:
-            toRemove[item] = rule['Consumes'][item]
-    except KeyError:
-        toRemove = {}
-        
     def effect(state):
-        # this code runs millions of times
-        next_state = list(state)
-        for item in toAdd:
-            next_state[itemDict[item]] += toAdd[item]
-            
-        for item in toRemove:
-            next_state[itemDict[item]] -= toRemove[item]
+        new_state = list(state)
+        for pair in delta_pairs:
+            index, shift = pair
+            new_state[index] += shift
+        return tuple(new_state)
         
-        return tuple(next_state)
-    
     return effect
-    
+  
 def make_unchecker(rule):
-    try:
-        produces = rule['Produces'].copy()
-    except KeyError:
-        produces = dict()
-
-    def uncheck(state):
-        # this code runs millions of times
-        for item in produces:
-            indexOfItem = itemDict[item]
-            if produces[item] <= state[indexOfItem]:
-                return True
-        
-        return False # or False
+    produces = rule.get('Produces', {})
+    willProduce = [(itemDict[item], produces[item]) for item in produces]
     
+    def uncheck(state):
+        return all([state[i] >= v for i, v in willProduce])
+
     return uncheck
     
 def make_uneffector(rule):
-    toAdd = {}
-    toRemove = {}
+    produces, consumes = rule.get('Produces', {}), rule.get('Requires', {})
+    willProduce = [(itemDict[item], produces[item]*(-1)) for item in produces]
+    willConsume = [(itemDict[item], consumes[item]) for item in consumes]
+    delta_pairs = willProduce + willConsume
     
-    for item in rule['Produces']:
-        toAdd[item] = rule['Produces'][item]
-            
-    try:
-        for item in rule['Consumes']:
-            toRemove[item] = rule['Consumes'][item]
-    except KeyError:
-        toRemove = {}
-        
     def uneffect(state):
-        # this code runs millions of times
-        next_state = list(state)
-        for item in toAdd:
-            next_state[itemDict[item]] -= toAdd[item]
-            
-        for item in toRemove:
-            next_state[itemDict[item]] += toRemove[item]
-        
-        return tuple(next_state)
-    
+        new_state = list(state)
+        for pair in delta_pairs:
+            index, shift = pair
+            new_state[index] += shift
+        return tuple(new_state)
+
     return uneffect
 
 # Try to open up the passed-in file, handle errors nicely.
