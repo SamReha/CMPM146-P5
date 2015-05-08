@@ -158,7 +158,7 @@
         "bench": true
       }, 
       "Consumes": {
-        "cobble": 6
+        "cobble": 8
       }, 
       "Time": 1
     }, 
