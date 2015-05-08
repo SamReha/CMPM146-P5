@@ -2,7 +2,7 @@ from math import sqrt
 from heapq import heappush, heappop
 
 def search(graph, back_graph, initial, goal, limit, heuristic):
-    def is_equal(state, goal_state):
+    def is_sufficient(state, goal_state):
         for i in range(0, len(goal_state)):
             if state[i] < goal_state[i]:
                 return False
@@ -31,15 +31,16 @@ def search(graph, back_graph, initial, goal, limit, heuristic):
     back_cost[goal] = 0
     back_prev[goal] = None
     
-    verbose[initial] = ("no_action", initial, 0)
+    #verbose[initial] = None
     verbose[goal] = ("no_action", goal, 0)      # This is not correct, but will stop it from crashing.
     heappush(q, (cost[initial], initial, "forward"))
-    heappush(q, (back_cost[goal], goal, "backward"))
+    #heappush(q, (back_cost[goal], goal, "backward"))
 
     while len(q) > 0 and iterations < limit:
         _, u, direction = heappop(q)
         
-        if (direction is "forward" and u in back_visit) or is_equal(u, goal):
+        #if direction is "forward" and u in back_visit:
+        if is_sufficient(u, goal):
             found_path = True
             break
         elif direction is "backward" and u in visit:
@@ -69,7 +70,8 @@ def search(graph, back_graph, initial, goal, limit, heuristic):
                     back_cost[uneffect] = alt
                     back_prev[uneffect] = u
                     verbose[uneffect] = neighbor
-                    heappush(q, (alt + heuristic(uneffect, initial), uneffect, "backward"))
+                    #heappush(q, (alt + heuristic(uneffect, initial), uneffect, "backward"))
+                    heappush(q, (alt, uneffect, "backward"))
                 
         iterations += 1
         
@@ -82,17 +84,17 @@ def search(graph, back_graph, initial, goal, limit, heuristic):
         plan = []
         total_cost = cost[u]    # This wont work bidirectionally
         
-        while forward_u:
+        while forward_u and forward_u != initial:
             plan.append(verbose[forward_u])
-            forward_u = prev[forward_u]
+            forward_u = prev.get(forward_u, None)
         plan.reverse()
         
         backward_u = back_prev.get(backward_u, None)
         while backward_u:
-            print "AAAAAAAHHHHHH"
             plan.append(verbose[backward_u])
             backward_u = back_prev.get(backward_u, None)
         
+        print "ALTERNATIVE COST: " + str(alternative_cost)
         return total_cost, plan
     else:
         return 0, None

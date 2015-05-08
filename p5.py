@@ -7,36 +7,8 @@ import planner as Plan
 # Helper functions!
 def graph(state, goal):
     for r in all_recipes:
-        if r.check(state) and not_redundant(state, goal, r):
+        if r.check(state):
             yield (r.name, r.effect(state), r.cost)
-            
-def not_redundant(cur_state, end_state, rec):
-    if rec.name == "craft wooden_pickaxe at bench":
-        if cur_state[16] >= end_state[16]:
-            return False
-    elif rec.name == "craft stone_pickaxe at bench":
-        if cur_state[13] >= end_state[13]:
-            return False
-    elif rec.name == "craft iron_pickaxe at bench":
-        if cur_state[7] >= end_state[7]:
-            return False
-    elif rec.name == "craft wooden_axe at bench":
-        if cur_state[15] >= end_state[15]:
-            return False
-    elif rec.name == "craft stone_axe at bench":
-        if cur_state[12] >= end_state[12]:
-            return False
-    elif rec.name == "craft iron_pickaxe at bench":
-        if cur_state[14] >= end_state[14]:
-            return False
-    elif rec.name == "craft furnace at bench":
-        if cur_state[4] >= end_state[4]:
-            return False
-    elif rec.name == "craft bench":
-        if cur_state[0] >= end_state[0]:
-            return False
-    else:
-        return True
 
 def back_graph(state, initial):
     for r in all_recipes:
@@ -46,6 +18,19 @@ def back_graph(state, initial):
 def heuristic(state, end_state):
     distance = 0
     
+    # Check that we aren't redundant for non-consumable items
+    for item in non_consumables:
+        index = itemDict[item]
+        if state[index] > end_state[index] and state[index] > 1:
+            return sys.maxint
+
+    # Check that we aren't redundant for consumable items
+    for item in consumables:
+        index = itemDict[item]
+        if state[index] > consumables[item] and state[index] > end_state[index]:
+            return sys.maxint
+    
+    # If we've gotten this far, we know this state has no redundancies. Return diff of current state and end_state
     for i in range(0, len(end_state)):
         sub_distance = end_state[i] - state[i]
         if sub_distance > 0:
@@ -85,7 +70,7 @@ def make_checker(rule):
     return check
     
 def make_effector(rule):
-    produces, consumes = rule.get('Produces', {}), rule.get('Requires', {})
+    produces, consumes = rule.get('Produces', {}), rule.get('Consumes', {})
     willProduce = [(itemDict[item], produces[item]) for item in produces]
     willConsume = [(itemDict[item], consumes[item]*(-1)) for item in consumes]
     delta_pairs = willProduce + willConsume
@@ -109,7 +94,7 @@ def make_unchecker(rule):
     return uncheck
     
 def make_uneffector(rule):
-    produces, consumes = rule.get('Produces', {}), rule.get('Requires', {})
+    produces, consumes = rule.get('Produces', {}), rule.get('Consumes', {})
     willProduce = [(itemDict[item], produces[item]*(-1)) for item in produces]
     willConsume = [(itemDict[item], consumes[item]) for item in consumes]
     delta_pairs = willProduce + willConsume
@@ -137,6 +122,23 @@ except IOError:
 items, inventory, goal = Crafting['Items'], Crafting['Initial'], Crafting['Goal']
 
 itemDict = get_item_dictionary(items)
+non_consumables = []
+consumables = {}
+
+# Build list of non_consumables
+for i in [0, 1, 4, 6, 7, 12, 13, 15, 16]:
+    non_consumables.append(items[i])
+    
+# Build dictionary of max number of required consumables
+consumables['coal'] = 1
+consumables['ore'] = 1
+consumables['ingot'] = 6
+consumables['plank'] = 4
+consumables['stick'] = 4
+consumables['wood'] = 1
+consumables['cobble'] = 8
+
+    
 
 # Convert recipes into more efficient format
 Recipe = namedtuple('Recipe',['name','check','effect','uncheck', 'uneffect', 'cost'])
@@ -162,4 +164,5 @@ if plan is None:
     print "No plan could be found!"
 else:
     print "Total Cost: " + str(cost)
-    print plan
+    for i in range(0, len(plan)):
+        print plan[i]
