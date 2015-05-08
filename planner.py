@@ -94,7 +94,6 @@ def search(graph, back_graph, initial, goal, limit, heuristic):
             plan.append(verbose[backward_u])
             backward_u = back_prev.get(backward_u, None)
         
-        print "ALTERNATIVE COST: " + str(alternative_cost)
         return total_cost, plan
     else:
         return 0, None
